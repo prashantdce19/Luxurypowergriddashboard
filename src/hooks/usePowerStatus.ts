@@ -75,6 +75,9 @@ export function usePowerStatus(pollIntervalMs = 10_000): PowerStatusResult {
     let eventSource: EventSource | null = null;
     let pollInterval: any = null;
 
+    // ALWAYS fetch initial status via HTTP on mount for instant load times
+    fetchStatus();
+
     const startPolling = () => {
       if (pollInterval) return;
       console.log("[usePowerStatus] Starting polling fallback...");
