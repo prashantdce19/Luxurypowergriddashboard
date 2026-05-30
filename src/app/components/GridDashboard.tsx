@@ -133,6 +133,36 @@ export default function GridDashboard() {
           />
         </section>
 
+        {/* Telegram Subscription Card */}
+        <section className="mb-4">
+          <a
+            href="https://t.me/IbizaPS_bot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0088cc]/15 to-[#0088cc]/5 hover:from-[#0088cc]/25 hover:to-[#0088cc]/10 border border-[#0088cc]/30 hover:border-[#0088cc]/50 p-4 flex items-center justify-between transition-all duration-300 shadow-xl cursor-pointer"
+          >
+            <div className="absolute -right-10 -bottom-10 w-24 h-24 rounded-full bg-[#0088cc]/10 blur-xl group-hover:scale-125 transition-transform duration-500" />
+            
+            <div className="flex items-center gap-4.5 z-10">
+              <div className="w-10 h-10 rounded-xl bg-[#0088cc]/20 border border-[#0088cc]/40 flex items-center justify-center text-[#0088cc] shadow-inner group-hover:scale-110 transition-transform duration-300">
+                <svg className="w-5.5 h-5.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15.82-1.07 4.28-1.55 5.72-.2.6-.53.8-.75.82-.47.04-.83-.31-1.29-.61-.71-.47-1.11-.76-1.8-1.22-.8-.53-.28-.82.17-1.29.12-.12 2.16-1.98 2.2-2.15.01-.02.01-.11-.04-.15-.05-.04-.12-.03-.18-.01-.08.02-1.34.85-3.79 2.5-.36.25-.69.37-.98.36-.32-.01-.94-.18-1.4-.33-.56-.18-1.01-.28-1-.59.01-.16.23-.33.66-.51 2.58-1.12 4.3-1.86 5.16-2.22 2.45-1.02 2.96-1.2 3.29-1.2.07 0 .24.02.35.11.09.08.12.19.13.27 0 .04.01.12 0 .19z" />
+                </svg>
+              </div>
+              <div className="flex flex-col gap-0.5 text-left">
+                <span className="text-sm font-semibold text-white group-hover:text-[#0088cc] transition-colors">
+                  Receive Telegram Alerts
+                </span>
+                <span className="text-xs text-white/50 leading-snug">
+                  Open @IbizaPS_bot and click Start at the bottom to enroll
+                </span>
+              </div>
+            </div>
+            
+            <ChevronRight size={16} className="text-white/40 group-hover:text-white/80 group-hover:translate-x-1 transition-all duration-300 z-10" />
+          </a>
+        </section>
+
         {/* Views counter */}
         {views > 0 && (
           <div className="flex items-center gap-1.5 justify-end mb-6 text-white/30">

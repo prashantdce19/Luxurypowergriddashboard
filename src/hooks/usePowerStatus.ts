@@ -127,6 +127,10 @@ export function usePowerStatus(pollIntervalMs = 10_000): PowerStatusResult {
               });
               window.dispatchEvent(customEvent);
             }
+          } else if (data.type === "history_reload") {
+            console.log("[usePowerStatus] SSE triggered history reload event.");
+            const customEvent = new CustomEvent("power-state-change");
+            window.dispatchEvent(customEvent);
           }
         } catch (err) {
           console.error("[usePowerStatus] Failed to parse SSE event:", err);
