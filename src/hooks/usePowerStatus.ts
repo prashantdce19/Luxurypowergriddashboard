@@ -72,12 +72,79 @@ export function usePowerStatus(pollIntervalMs = 10_000): PowerStatusResult {
   }, []);
 
   useEffect(() => {
-    // Fetch immediately on mount
-    fetchStatus();
+    let eventSource: EventSource | null = null;
+    let pollInterval: any = null;
 
-    // Then poll on interval
-    const interval = setInterval(fetchStatus, pollIntervalMs);
-    return () => clearInterval(interval);
+    const startPolling = () => {
+      if (pollInterval) return;
+      console.log("[usePowerStatus] Starting polling fallback...");
+      fetchStatus();
+      pollInterval = setInterval(fetchStatus, pollIntervalMs);
+    };
+
+    const stopPolling = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
+
+    if (typeof EventSource !== "undefined") {
+      console.log("[usePowerStatus] Connecting to SSE public stream...");
+      eventSource = new EventSource(`${API_BASE}/api/public/stream`);
+
+      eventSource.onopen = () => {
+        console.log("[usePowerStatus] SSE connection opened successfully!");
+        stopPolling();
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "snapshot" || data.type === "state_change") {
+            const mappedState: GridState = API_STATE_MAP[data.status] ?? "MAINTENANCE";
+            const sinceDate = new Date(data.since);
+
+            setResult((prev) => ({
+              currentState: mappedState,
+              since: sinceDate,
+              durationSeconds: data.duration_seconds ?? 0,
+              views: data.views ?? prev.views,
+              loading: false,
+              error: null,
+              lastFetched: new Date(),
+            }));
+
+            if (data.type === "state_change") {
+              const customEvent = new CustomEvent("power-state-change", {
+                detail: {
+                  state: mappedState,
+                  timestamp: sinceDate,
+                }
+              });
+              window.dispatchEvent(customEvent);
+            }
+          }
+        } catch (err) {
+          console.error("[usePowerStatus] Failed to parse SSE event:", err);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.warn("[usePowerStatus] SSE error occurred. Falling back to polling...", err);
+        startPolling();
+      };
+    } else {
+      console.log("[usePowerStatus] EventSource is not supported by this browser.");
+      startPolling();
+    }
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+      stopPolling();
+    };
   }, [fetchStatus, pollIntervalMs]);
 
   // Live-update durationSeconds every second (without a new API call)
