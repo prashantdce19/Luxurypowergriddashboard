@@ -7,7 +7,7 @@ import { formatDuration, formatTime } from "../utils";
 
 export default function LogsView() {
   const navigate = useNavigate();
-  const { events } = useGrid();
+  const { events, timeInState } = useGrid();
 
   // Group events by day
   const groupedEvents = events.reduce((acc, event) => {
@@ -72,9 +72,9 @@ export default function LogsView() {
                               {formatTime(event.timestamp)}
                             </span>
                           </div>
-                          {event.duration !== undefined && (
+                          {(isLatest || event.duration !== undefined) && (
                             <div className="text-xs text-white/50 bg-white/5 inline-block px-2 py-1 rounded-md mt-1">
-                              Duration: {formatDuration(event.duration)}
+                              Duration: {formatDuration(isLatest ? timeInState : event.duration!)}
                             </div>
                           )}
                           {isLatest && (
