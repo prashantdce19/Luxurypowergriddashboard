@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Clock, History, AlertTriangle, Zap, Gauge, PowerOff, Wrench, ChevronRight, Calendar } from "lucide-react";
+import { Clock, History, AlertTriangle, Zap, Gauge, PowerOff, Wrench, ChevronRight, Calendar, Eye, Wifi, WifiOff } from "lucide-react";
 import { Link } from "react-router";
 import { useGrid } from "../context/GridContext";
 import { STATE_CONFIG } from "../constants";
@@ -8,7 +8,7 @@ import { formatDuration, formatTime, formatDateShort } from "../utils";
 import { WeeklyHistory } from "./WeeklyHistory";
 
 export default function GridDashboard() {
-  const { currentState, events, timeInState, handleStateChange } = useGrid();
+  const { currentState, events, timeInState, views, loading, error } = useGrid();
   const config = STATE_CONFIG[currentState];
   const Icon = config.icon;
 
@@ -34,13 +34,26 @@ export default function GridDashboard() {
             </span>
             <span className="text-sm font-medium text-white/90">Ibiza Town, Faridabad</span>
           </div>
-          <button 
-            onClick={() => alert("Report a local power fault or emergency issue to the maintenance team.")}
-            className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors"
-            title="Report Fault"
-          >
-            <AlertTriangle size={14} className="text-white/60" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Connection indicator */}
+            <div
+              title={error ? `Connection error: ${error}` : "Live data connected"}
+              className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center"
+            >
+              {error ? (
+                <WifiOff size={13} className="text-red-400" />
+              ) : (
+                <Wifi size={13} className="text-emerald-400" />
+              )}
+            </div>
+            <button
+              onClick={() => alert("Report a local power fault or emergency issue to the maintenance team.")}
+              className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors"
+              title="Report Fault"
+            >
+              <AlertTriangle size={13} className="text-white/60" />
+            </button>
+          </div>
         </header>
 
         {/* Hero Section */}
@@ -73,7 +86,11 @@ export default function GridDashboard() {
                 className="absolute inset-0 rounded-full opacity-30 mix-blend-overlay"
                 style={{ backgroundColor: config.color }}
               />
-              <Icon size={48} style={{ color: '#fff', filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8))' }} strokeWidth={1.5} />
+              {loading ? (
+                <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Icon size={48} style={{ color: '#fff', filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8))' }} strokeWidth={1.5} />
+              )}
             </motion.div>
           </motion.div>
 
@@ -91,16 +108,16 @@ export default function GridDashboard() {
                 WebkitTextFillColor: 'transparent'
               }}
             >
-              {config.label}
+              {loading ? "Connecting…" : config.label}
             </h1>
             <p className="text-white/60 text-sm tracking-wide uppercase font-medium">
-              {config.message}
+              {error ? "Unable to reach server — retrying…" : config.message}
             </p>
           </motion.div>
         </section>
 
         {/* Info Bento Grid */}
-        <section className="grid grid-cols-2 gap-4 mb-10">
+        <section className="grid grid-cols-2 gap-4 mb-4">
           <BentoCard
             icon={<Clock size={16} className="text-white/40" />}
             label="Duration"
@@ -110,11 +127,19 @@ export default function GridDashboard() {
           <BentoCard
             icon={<History size={16} className="text-white/40" />}
             label="Last Transition"
-            value={formatTime(events[0].timestamp)}
-            subValue={formatDateShort(events[0].timestamp)}
+            value={events.length > 0 ? formatTime(events[0].timestamp) : "--:--"}
+            subValue={events.length > 0 ? formatDateShort(events[0].timestamp) : ""}
             accentColor={config.color}
           />
         </section>
+
+        {/* Views counter */}
+        {views > 0 && (
+          <div className="flex items-center gap-1.5 justify-end mb-6 text-white/30">
+            <Eye size={11} />
+            <span className="text-[10px] font-medium tracking-wider">{views.toLocaleString()} views</span>
+          </div>
+        )}
 
         {/* 7-Day History */}
         <WeeklyHistory />
@@ -130,50 +155,60 @@ export default function GridDashboard() {
             
             <div className="flex flex-col gap-6 relative">
               <AnimatePresence>
-                {displayedEvents.map((event, idx) => {
-                  const evConfig = STATE_CONFIG[event.state];
-                  const isFirst = idx === 0;
-                  return (
-                    <motion.div
-                      key={event.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="relative flex items-start gap-5"
-                    >
-                      <div className="relative mt-1.5 z-10">
-                        <div 
-                          className="w-3 h-3 rounded-full ring-4 ring-[#050505]"
-                          style={{ 
-                            backgroundColor: evConfig.color,
-                            boxShadow: isFirst ? `0 0 12px 3px ${evConfig.color}40` : 'none'
-                          }}
-                        />
-                      </div>
-                      
-                      <div className="flex-1 pb-2 border-b border-white/5">
-                        <div className="flex justify-between items-baseline mb-1">
-                          <h3 className={`text-sm font-semibold ${isFirst ? 'text-white' : 'text-white/70'}`}>
-                            {evConfig.label}
-                          </h3>
-                          <span className="text-xs text-white/40 font-mono">
-                            {formatTime(event.timestamp)}
-                          </span>
+                {displayedEvents.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-white/30 text-sm py-4"
+                  >
+                    {loading ? "Loading event history…" : "No events recorded yet."}
+                  </motion.div>
+                ) : (
+                  displayedEvents.map((event, idx) => {
+                    const evConfig = STATE_CONFIG[event.state];
+                    const isFirst = idx === 0;
+                    return (
+                      <motion.div
+                        key={event.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className="relative flex items-start gap-5"
+                      >
+                        <div className="relative mt-1.5 z-10">
+                          <div 
+                            className="w-3 h-3 rounded-full ring-4 ring-[#050505]"
+                            style={{ 
+                              backgroundColor: evConfig.color,
+                              boxShadow: isFirst ? `0 0 12px 3px ${evConfig.color}40` : 'none'
+                            }}
+                          />
                         </div>
-                        {event.duration !== undefined && (
-                          <div className="text-xs text-white/50">
-                            Lasted {formatDuration(event.duration)}
+                        
+                        <div className="flex-1 pb-2 border-b border-white/5">
+                          <div className="flex justify-between items-baseline mb-1">
+                            <h3 className={`text-sm font-semibold ${isFirst ? 'text-white' : 'text-white/70'}`}>
+                              {evConfig.label}
+                            </h3>
+                            <span className="text-xs text-white/40 font-mono">
+                              {formatTime(event.timestamp)}
+                            </span>
                           </div>
-                        )}
-                        {isFirst && (
-                          <div className="text-[11px] text-emerald-400 mt-2 font-semibold uppercase tracking-wider">
-                            Current active state
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                          {event.duration !== undefined && (
+                            <div className="text-xs text-white/50">
+                              Lasted {formatDuration(event.duration)}
+                            </div>
+                          )}
+                          {isFirst && (
+                            <div className="text-[11px] text-emerald-400 mt-2 font-semibold uppercase tracking-wider">
+                              Current active state
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
               </AnimatePresence>
               
               {/* Fade out mask over the last item */}
@@ -190,36 +225,6 @@ export default function GridDashboard() {
           </Link>
         </section>
       </main>
-
-      {/* Demo Controls - Floating at bottom */}
-      <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 px-6 pointer-events-none">
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-1.5 rounded-full flex gap-1 shadow-2xl pointer-events-auto">
-          <DemoButton 
-            active={currentState === "MAINS"} 
-            onClick={() => handleStateChange("MAINS")}
-            color={STATE_CONFIG.MAINS.color}
-            icon={<Zap size={16} />}
-          />
-          <DemoButton 
-            active={currentState === "GENERATOR"} 
-            onClick={() => handleStateChange("GENERATOR")}
-            color={STATE_CONFIG.GENERATOR.color}
-            icon={<Gauge size={16} />}
-          />
-          <DemoButton 
-            active={currentState === "BLACKOUT"} 
-            onClick={() => handleStateChange("BLACKOUT")}
-            color={STATE_CONFIG.BLACKOUT.color}
-            icon={<PowerOff size={16} />}
-          />
-          <DemoButton 
-            active={currentState === "MAINTENANCE"} 
-            onClick={() => handleStateChange("MAINTENANCE")}
-            color={STATE_CONFIG.MAINTENANCE.color}
-            icon={<Wrench size={16} />}
-          />
-        </div>
-      </div>
     </>
   );
 }
@@ -254,28 +259,5 @@ function BentoCard({ icon, label, value, subValue, accentColor }: { icon: React.
         }}
       />
     </motion.div>
-  );
-}
-
-function DemoButton({ active, onClick, color, icon }: { active: boolean, onClick: () => void, color: string, icon: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${
-        active ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white/80 hover:bg-white/10'
-      }`}
-    >
-      {active && (
-        <motion.div
-          layoutId="demo-active-pill"
-          className="absolute inset-0 rounded-full border border-white/30"
-          style={{ backgroundColor: color, opacity: 0.2 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        />
-      )}
-      <span style={{ color: active ? color : 'inherit' }} className="relative z-10">
-        {icon}
-      </span>
-    </button>
   );
 }
