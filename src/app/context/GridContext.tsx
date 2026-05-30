@@ -48,7 +48,7 @@ export function GridProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("power-state-change", handleStateChange);
   }, [refetch]);
 
-  const loading = statusLoading && historyLoading;
+  const loading = statusLoading || historyLoading;
   const error = statusError || historyError;
 
   return (

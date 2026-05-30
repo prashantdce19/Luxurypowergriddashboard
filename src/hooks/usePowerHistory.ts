@@ -86,7 +86,14 @@ export function usePowerHistory(): PowerHistoryResult {
   }, [fetchHistory]);
 
   const processHistoryData = (allEvents: GridEvent[]) => {
-    const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const formatDayLabel = (date: Date): string => {
+      const day = String(date.getDate()).padStart(2, '0');
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const month = months[date.getMonth()];
+      const year = String(date.getFullYear()).slice(-2);
+      return `${day} ${month} ${year}`;
+    };
+
     const now = new Date();
     const resultDays: WeeklyDayData[] = [];
     let totalMainsDuration = 0;
@@ -103,7 +110,7 @@ export function usePowerHistory(): PowerHistoryResult {
       nextDayDate.setDate(dayDate.getDate() + 1);
       const dayEnd = nextDayDate.getTime();
 
-      const dayLabel = daysOfWeek[dayDate.getDay()];
+      const dayLabel = formatDayLabel(dayDate);
 
       // Find initial state of the day (the last event that started before the day began)
       let startState: GridState = "MAINS";

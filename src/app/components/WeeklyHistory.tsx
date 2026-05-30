@@ -17,7 +17,7 @@ export function WeeklyHistory() {
           <div className="flex flex-col gap-4">
             {[...Array(7)].map((_, i) => (
               <div key={i} className="flex items-center gap-4">
-                <div className="h-3 w-6 bg-white/10 rounded" />
+                <div className="h-3 w-20 bg-white/10 rounded" />
                 <div className="flex-1 h-1.5 bg-white/5 rounded-full" />
                 <div className="h-3 w-8 bg-white/10 rounded" />
               </div>
@@ -47,7 +47,7 @@ export function WeeklyHistory() {
           <div className="flex flex-col gap-3.5">
             {weeklyDays.map((data, idx) => (
               <div key={data.day} className="flex items-center gap-4">
-                <span className="text-xs font-medium text-white/40 w-6">{data.day}</span>
+                <span className="text-xs font-medium text-white/40 w-20">{data.day}</span>
                 
                 {/* Segmented Bar */}
                 <div className="flex-1 h-1.5 rounded-full overflow-hidden flex bg-white/5 shadow-inner">
