@@ -99,8 +99,9 @@ export function usePowerHistory(): PowerHistoryResult {
     let totalMainsDuration = 0;
     let totalMonitoredDuration = 0;
 
-    // Generate last 7 days starting 6 days ago up to today
-    for (let i = 6; i >= 0; i--) {
+    // Generate last 7 days starting with today (i=0) and ending with 6 days ago (i=6)
+    // to order latest date as first and then the following days descending
+    for (let i = 0; i <= 6; i++) {
       const dayDate = new Date();
       dayDate.setDate(now.getDate() - i);
       dayDate.setHours(0, 0, 0, 0);
@@ -113,7 +114,8 @@ export function usePowerHistory(): PowerHistoryResult {
       const dayLabel = formatDayLabel(dayDate);
 
       // Find initial state of the day (the last event that started before the day began)
-      let startState: GridState = "MAINS";
+      // Default to "MAINTENANCE" (grey) if no events are recorded in the past
+      let startState: GridState = "MAINTENANCE";
       const pastEvents = allEvents.filter(e => e.timestamp.getTime() < dayStart);
       if (pastEvents.length > 0) {
         startState = pastEvents[pastEvents.length - 1].state;
@@ -139,17 +141,26 @@ export function usePowerHistory(): PowerHistoryResult {
         lastTime = eventTime;
       }
 
-      // Add final segment till midnight or current time (if today)
-      const endOfSegment = Math.min(dayEnd, Date.now());
-      const remainingDuration = Math.max(0, Math.floor((endOfSegment - lastTime) / 1000));
-      if (remainingDuration > 0) {
-        daySegments.push({ state: currentState, duration: remainingDuration });
+      // Add final active segment till midnight or current time (if today)
+      const nowMs = Date.now();
+      const endOfActiveSegment = Math.min(dayEnd, nowMs);
+      const activeDuration = Math.max(0, Math.floor((endOfActiveSegment - lastTime) / 1000));
+      if (activeDuration > 0) {
+        daySegments.push({ state: currentState, duration: activeDuration });
       }
 
-      // Calculate total seconds in this day so far
-      const totalDaySeconds = daySegments.reduce((acc, s) => acc + s.duration, 0);
+      // If there is any unelapsed time in this 24-hour day (e.g. today's future),
+      // pad the remaining day with a MAINTENANCE segment so the total duration is exactly 86,400 seconds.
+      const elapsedSeconds = daySegments.reduce((acc, s) => acc + s.duration, 0);
+      const fullDaySeconds = 86400;
+      if (elapsedSeconds < fullDaySeconds) {
+        daySegments.push({
+          state: "MAINTENANCE",
+          duration: fullDaySeconds - elapsedSeconds
+        });
+      }
 
-      // Build consolidated segments and calculate percentages
+      // Build consolidated state durations
       const stateDurations: Record<GridState, number> = {
         MAINS: 0,
         GENERATOR: 0,
@@ -161,26 +172,30 @@ export function usePowerHistory(): PowerHistoryResult {
         stateDurations[seg.state] += seg.duration;
       }
 
-      // Accumulate for overall uptime
-      totalMainsDuration += stateDurations.MAINS;
-      totalMonitoredDuration += totalDaySeconds;
-
-      const segments: DaySegment[] = [];
-      if (totalDaySeconds > 0) {
-        for (const seg of daySegments) {
-          segments.push({
-            state: seg.state,
-            pct: Math.round((seg.duration / totalDaySeconds) * 1000) / 10,
-          });
-        }
-      } else {
-        // Default to 100% MAINS if no time elapsed / offline
-        segments.push({ state: "MAINS", pct: 100 });
+      // Subtract the future padding segment duration from MAINTENANCE state duration for monitored calculations
+      let activeMaintenanceDuration = stateDurations.MAINTENANCE;
+      if (elapsedSeconds < fullDaySeconds) {
+        activeMaintenanceDuration = Math.max(0, stateDurations.MAINTENANCE - (fullDaySeconds - elapsedSeconds));
       }
 
-      // Uptime is MAINS percentage
       const mainsSeconds = stateDurations.MAINS;
-      const uptimePct = totalDaySeconds > 0 ? Math.round((mainsSeconds / totalDaySeconds) * 100) : 100;
+      const activeMonitoredSeconds = stateDurations.MAINS + stateDurations.GENERATOR + stateDurations.BLACKOUT + activeMaintenanceDuration;
+
+      // Accumulate active monitored durations for the overall 7-day average
+      totalMainsDuration += mainsSeconds;
+      totalMonitoredDuration += (stateDurations.MAINS + stateDurations.GENERATOR + stateDurations.BLACKOUT);
+
+      // Build segments list using the absolute 24h scale
+      const segments: DaySegment[] = [];
+      for (const seg of daySegments) {
+        segments.push({
+          state: seg.state,
+          pct: Math.round((seg.duration / fullDaySeconds) * 1000) / 10,
+        });
+      }
+
+      // Uptime is computed over elapsed active monitored time
+      const uptimePct = activeMonitoredSeconds > 0 ? Math.round((mainsSeconds / activeMonitoredSeconds) * 100) : 0;
 
       resultDays.push({
         day: dayLabel,
